@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>untigravity</title>
+    <style>
+        body {
+            margin: 0;
+            background: linear-gradient(#87ceeb, #e0f6ff);
+            font-family: system-ui, sans-serif;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .ui {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, .8);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="ui">
+        untigravity 💩<br>
+        HIT: <span id="score">0</span><br>
+        click / space = drop
+    </div>
+
+    <canvas id="game"></canvas>
+
+    <script>
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
+        const scoreEl = document.getElementById("score");
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener("resize", resize);
+        resize();
+
+        const W = () => canvas.width;
+        const H = () => canvas.height;
+
+        // bird
+        const bird = {
+            x: W() / 2,
+            y: 100,
+            r: 22,
+            vx: 2
+        };
+
+        // people
+        const people = [];
+        for (let i = 0; i < 6; i++) {
+            people.push({
+                x: 120 + i * 180,
+                y: H() - 120,
+                w: 40,
+                h: 80,
+                hit: false,
+                vy: 0
+            });
+        }
+
+        // poops
+        let poops = [];
+        let score = 0;
+
+        // input
+        window.addEventListener("click", dropPoop);
+        window.addEventListener("keydown", e => {
+            if (e.code === "Space") {
+                e.preventDefault();
+                dropPoop();
+            }
+        });
+
+        function dropPoop() {
+            poops.push({
+                x: bird.x,
+                y: bird.y + bird.r,
+                vx: (Math.random() - 0.5) * 1.5, // wind
+                vy: 0,
+                r: 6 + Math.random() * 2
+            });
+        }
+
+        // physics
+        const gravity = 0.35;
+        const air = 0.999;
+
+        function hitRectCircle(r, c) {
+            const cx = Math.max(r.x, Math.min(c.x, r.x + r.w));
+            const cy = Math.max(r.y, Math.min(c.y, r.y + r.h));
+            const dx = c.x - cx;
+            const dy = c.y - cy;
+            return dx * dx + dy * dy < c.r * c.r;
+        }
+
+        function update() {
+            // bird movement
+            bird.x += bird.vx;
+            if (bird.x < bird.r || bird.x > W() - bird.r) {
+                bird.vx *= -1;
+            }
+
+            // poops
+            poops.forEach(p => {
+                p.vy += gravity;
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vx *= air;
+            });
+
+            // collision
+            poops.forEach(p => {
+                people.forEach(h => {
+                    if (!h.hit && hitRectCircle(h, p)) {
+                        h.hit = true;
+                        score++;
+                        scoreEl.textContent = score;
+                        // bounce a bit
+                        p.vy *= -0.3;
+                        p.vx *= 1.2;
+                    }
+                });
+            });
+
+            // update hit people
+            people.forEach(h => {
+                if (h.hit) {
+                    h.vy -= 0.2;
+                    h.y += h.vy;
+                }
+            });
+
+            // cleanup
+            poops = poops.filter(p => p.y < H() + 50);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W(), H());
+
+            // bird
+            ctx.fillStyle = "white";
+            ctx.beginPath();
+            ctx.arc(bird.x, bird.y, bird.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "black";
+            ctx.fillRect(bird.x + 8, bird.y - 6, 4, 4);
+
+            // poops
+            ctx.fillStyle = "#8b5a2b";
+            poops.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // people
+
+            people.forEach(h => {
+                ctx.fillStyle = h.hit ? "#ffaaaa" : "#333";
+                ctx.fillRect(h.x, h.y, h.w, h.h);
+                ctx.fillStyle = "#000";
+                ctx.fillRect(h.x + 10, h.y - 20, 20, 20); // head
+            });
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+        loop();
+    </script>
+</body>
+
+</html>
