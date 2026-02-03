@@ -23,6 +23,8 @@ npm run dev
 
 
 ## 起動方法（Docker）
+※docker必要
+※開発用
 ```bash
 docker compose up --build
 ブラウザで以下にアクセス
